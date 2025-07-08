@@ -1,0 +1,20 @@
+postgres:
+  hostname: postgres
+  port: 5432
+  database: app_db
+  username: admin
+  password: admin
+  table: users
+  slot: my_replication_slot
+  publication: my_publication
+
+starrocks:
+  feHttp: http://starrocks-fe:8030
+  username: root
+  password: ''
+  database: demo_db
+  table: users
+
+flink:
+  parallelism: 1
+  checkpointInterval: 5000
