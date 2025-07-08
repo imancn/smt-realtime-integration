@@ -1,0 +1,67 @@
+version: '3.8'
+services:
+
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: app_db
+    volumes:
+      - ./postgres/init:/docker-entrypoint-initdb.d
+
+  starrocks-fe:
+    image: starrocks/fe-ubuntu:latest
+    container_name: starrocks-fe
+    ports:
+      - "8030:8030"
+      - "9030:9030"
+    environment:
+      - TZ=Asia/Tehran
+
+  starrocks-be:
+    image: starrocks/be-ubuntu:latest
+    container_name: starrocks-be
+    depends_on:
+      - starrocks-fe
+    environment:
+      - FE_SERVERS=starrocks-fe:9010
+      - BE_HOST=starrocks-be
+      - TZ=Asia/Tehran
+
+  jobmanager:
+    image: flink:1.17
+    container_name: jobmanager
+    ports:
+      - "8081:8081"
+    command: jobmanager
+    environment:
+      - |
+        FLINK_PROPERTIES=
+        jobmanager.rpc.address: jobmanager
+    depends_on:
+      - postgres
+
+  taskmanager:
+    image: flink:1.17
+    container_name: taskmanager
+    depends_on:
+      - jobmanager
+    command: taskmanager
+    environment:
+      - |
+        FLINK_PROPERTIES=
+        jobmanager.rpc.address: jobmanager
+
+  smt-job:
+    build: ./smt
+    container_name: smt-job
+    depends_on:
+      - jobmanager
+      - taskmanager
+      - postgres
+      - starrocks-fe
+      - starrocks-be
