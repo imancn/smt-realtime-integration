@@ -1,67 +1,46 @@
 version: '3.8'
-services:
 
+services:
   postgres:
-    image: postgres:15
-    container_name: postgres
+    image: debezium/postgres:13
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin
-      POSTGRES_DB: app_db
-    volumes:
-      - ./postgres/init:/docker-entrypoint-initdb.d
+      POSTGRES_DB: testdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
 
   starrocks-fe:
-    image: starrocks/fe-ubuntu:latest
-    container_name: starrocks-fe
+    image: starrocks/fe-ubuntu:3.2-latest
     ports:
       - "8030:8030"
       - "9030:9030"
-    environment:
-      - TZ=Asia/Tehran
+    volumes:
+      - starrocks-fe-data:/opt/starrocks/fe/meta
+    command: /opt/starrocks/fe/bin/start_fe.sh && tail -f /opt/starrocks/fe/log/fe.out
 
   starrocks-be:
-    image: starrocks/be-ubuntu:latest
-    container_name: starrocks-be
-    depends_on:
-      - starrocks-fe
-    environment:
-      - FE_SERVERS=starrocks-fe:9010
-      - BE_HOST=starrocks-be
-      - TZ=Asia/Tehran
+    image: starrocks/be-ubuntu:3.2-latest
+    ports:
+      - "8040:8040"
+    volumes:
+      - starrocks-be-data:/opt/starrocks/be/storage
+    command: /opt/starrocks/be/bin/start_be.sh && tail -f /opt/starrocks/be/log/be.out
 
   jobmanager:
     image: flink:1.17
-    container_name: jobmanager
     ports:
       - "8081:8081"
-    command: jobmanager
     environment:
-      - |
-        FLINK_PROPERTIES=
-        jobmanager.rpc.address: jobmanager
-    depends_on:
-      - postgres
+      - JOB_MANAGER_RPC_ADDRESS=jobmanager
+    command: jobmanager
 
   taskmanager:
     image: flink:1.17
-    container_name: taskmanager
     depends_on:
       - jobmanager
     command: taskmanager
-    environment:
-      - |
-        FLINK_PROPERTIES=
-        jobmanager.rpc.address: jobmanager
 
-  smt-job:
-    build: ./smt
-    container_name: smt-job
-    depends_on:
-      - jobmanager
-      - taskmanager
-      - postgres
-      - starrocks-fe
-      - starrocks-be
+volumes:
+  starrocks-fe-data:
+  starrocks-be-data:
